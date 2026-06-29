@@ -14,7 +14,9 @@ dataset_variables = pd.DataFrame([
     ["noise_power_w", "Thermal and scenario-dependent noise power", "Derived noise output"],
     ["snr_db", "Signal-to-noise ratio", "Derived detection variable"],
     ["q_feature_1 to q_feature_6", "Quantum-inspired angle-encoding features", "AI feature map"],
-    ["detection_error", "Physics-computed detection error probability", "Prediction target"]
+    ["quantum_ai_detection_index", "Bounded aggregate quantum-inspired feature index", "AI interpretability variable"],
+    ["detection_error", "Physics-computed detection error probability", "Prediction target"],
+    ["detection_probability", "One minus detection-error probability", "Derived output"]
 ], columns=["Variable", "Meaning", "Role"])
 
 dataset_variables.to_csv("results/table1_dataset_variables.csv", index=False)
@@ -22,16 +24,28 @@ dataset_variables.to_csv("results/table1_dataset_variables.csv", index=False)
 model_comparison = pd.read_csv("results/model_comparison.csv")
 scenario_validation = pd.read_csv("results/physics_scenario_validation.csv")
 ablation = pd.read_csv("results/quantum_feature_ablation.csv")
+runtime = pd.read_csv("results/runtime_comparison.csv")
+generalization = pd.read_csv("results/scenario_generalization.csv")
 
 with open("results/publication_tables.md", "w") as f:
     f.write("# Publication Tables\n\n")
+
     f.write("## Table 1. Dataset variables\n\n")
     f.write(dataset_variables.to_markdown(index=False))
+
     f.write("\n\n## Table 2. Model comparison\n\n")
     f.write(model_comparison.to_markdown(index=False))
+
     f.write("\n\n## Table 3. Physics scenario validation\n\n")
     f.write(scenario_validation.to_markdown(index=False))
+
     f.write("\n\n## Table 4. Quantum-inspired feature ablation\n\n")
     f.write(ablation.to_markdown(index=False))
 
-print("Publication tables saved in results/")
+    f.write("\n\n## Table 5. Runtime comparison\n\n")
+    f.write(runtime.to_markdown(index=False))
+
+    f.write("\n\n## Table 6. Scenario generalization\n\n")
+    f.write(generalization.to_markdown(index=False))
+
+print("Publication tables saved in results/publication_tables.md")

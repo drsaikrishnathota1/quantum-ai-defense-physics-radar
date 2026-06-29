@@ -17,9 +17,8 @@ df = pd.read_csv("data/radar_detection_dataset.csv")
 
 target = "detection_error"
 
-physics_features = [
+operational_features = [
     "frequency_ghz",
-    "wavelength_m",
     "transmit_power_dbm",
     "antenna_gain_db",
     "noise_figure_db",
@@ -27,7 +26,11 @@ physics_features = [
     "scenario_noise_penalty_db",
     "range_km",
     "rcs_m2",
-    "system_loss_db",
+    "system_loss_db"
+]
+
+physics_features = operational_features + [
+    "wavelength_m",
     "received_power_w",
     "noise_power_w",
     "snr_db"
@@ -43,9 +46,20 @@ quantum_features = physics_features + [
     "quantum_ai_detection_index"
 ]
 
+operational_quantum_features = operational_features + [
+    "q_feature_1",
+    "q_feature_2",
+    "q_feature_3",
+    "q_feature_4",
+    "q_feature_5",
+    "q_feature_6",
+    "quantum_ai_detection_index"
+]
+
 def evaluate(name, y_true, y_pred):
     return {
         "model": name,
+        "feature_mode": name,
         "mse": mean_squared_error(y_true, y_pred),
         "mae": mean_absolute_error(y_true, y_pred),
         "r2": r2_score(y_true, y_pred)
@@ -85,12 +99,20 @@ models = [
         physics_features
     ),
     (
-        "Quantum-AI MLP",
+        "Quantum-AI MLP Full-Physics",
         Pipeline([
             ("scaler", StandardScaler()),
             ("mlp", MLPRegressor(hidden_layer_sizes=(128, 64, 32), max_iter=300, random_state=42))
         ]),
         quantum_features
+    ),
+    (
+        "Operational Quantum-AI MLP",
+        Pipeline([
+            ("scaler", StandardScaler()),
+            ("mlp", MLPRegressor(hidden_layer_sizes=(128, 64, 32), max_iter=300, random_state=42))
+        ]),
+        operational_quantum_features
     )
 ]
 
@@ -101,7 +123,7 @@ saved_pred = None
 for name, model, features in models:
     metric, y_test, pred = train_model(name, model, features)
     results.append(metric)
-    if name == "Quantum-AI MLP":
+    if name == "Operational Quantum-AI MLP":
         saved_y = y_test
         saved_pred = pred
 
@@ -113,14 +135,14 @@ plt.scatter(saved_y, saved_pred, s=8, alpha=0.35)
 plt.plot([0, 0.5], [0, 0.5], linestyle="--", linewidth=2)
 plt.xlabel("Physics-Computed Detection Error")
 plt.ylabel("AI-Predicted Detection Error")
-plt.title("Quantum-AI Model Validation")
+plt.title("Operational Quantum-AI Model Validation")
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig("figures/fig4_actual_vs_predicted_quantum_ai.png", dpi=300)
-plt.savefig("figures/fig4_actual_vs_predicted_quantum_ai.pdf")
+plt.savefig("figures/fig4_actual_vs_predicted_operational_quantum_ai.png", dpi=300)
+plt.savefig("figures/fig4_actual_vs_predicted_operational_quantum_ai.pdf")
 plt.close()
 
-plt.figure(figsize=(7, 5))
+plt.figure(figsize=(8, 5))
 plt.bar(results_df["model"], results_df["r2"])
 plt.xticks(rotation=30, ha="right")
 plt.ylabel("R² Score")

@@ -8,7 +8,8 @@ Path("figures").mkdir(exist_ok=True)
 model_df = pd.read_csv("results/model_comparison.csv")
 
 physics_mlp = model_df[model_df["model"] == "MLP Physics"].iloc[0]
-quantum_mlp = model_df[model_df["model"] == "Quantum-AI MLP"].iloc[0]
+quantum_full = model_df[model_df["model"] == "Quantum-AI MLP Full-Physics"].iloc[0]
+quantum_operational = model_df[model_df["model"] == "Operational Quantum-AI MLP"].iloc[0]
 
 ablation = pd.DataFrame([
     {
@@ -19,22 +20,29 @@ ablation = pd.DataFrame([
         "r2": physics_mlp["r2"]
     },
     {
-        "feature_set": "Physics + quantum-inspired features",
-        "model": "Quantum-AI MLP",
-        "mse": quantum_mlp["mse"],
-        "mae": quantum_mlp["mae"],
-        "r2": quantum_mlp["r2"]
+        "feature_set": "Full physics + quantum-inspired features",
+        "model": "Quantum-AI MLP Full-Physics",
+        "mse": quantum_full["mse"],
+        "mae": quantum_full["mae"],
+        "r2": quantum_full["r2"]
+    },
+    {
+        "feature_set": "Operational inputs + quantum-inspired features",
+        "model": "Operational Quantum-AI MLP",
+        "mse": quantum_operational["mse"],
+        "mae": quantum_operational["mae"],
+        "r2": quantum_operational["r2"]
     }
 ])
 
-ablation["r2_gain"] = ablation["r2"] - ablation.loc[0, "r2"]
+ablation["r2_gain_vs_physics_mlp"] = ablation["r2"] - physics_mlp["r2"]
 ablation.to_csv("results/quantum_feature_ablation.csv", index=False)
 
-plt.figure(figsize=(7, 5))
+plt.figure(figsize=(8, 5))
 plt.bar(ablation["feature_set"], ablation["r2"])
 plt.ylabel("R² Score")
-plt.title("Ablation: Effect of Quantum-Inspired Features")
-plt.xticks(rotation=15, ha="right")
+plt.title("Ablation: Quantum-Inspired Features and Operational Inputs")
+plt.xticks(rotation=20, ha="right")
 plt.grid(True, axis="y", alpha=0.3)
 plt.tight_layout()
 plt.savefig("figures/fig7_quantum_feature_ablation.png", dpi=300)
