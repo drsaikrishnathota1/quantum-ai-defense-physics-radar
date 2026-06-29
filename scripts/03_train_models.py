@@ -5,12 +5,10 @@ import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.ensemble import RandomForestRegressor
-
-import torch
-import torch.nn as nn
-import torch.optim as optim
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.neural_network import MLPRegressor
 
 Path("results").mkdir(exist_ok=True)
 Path("figures").mkdir(exist_ok=True)
@@ -21,22 +19,31 @@ target = "detection_error"
 
 physics_features = [
     "frequency_ghz",
-    "signal_power_db",
-    "noise_power_db",
-    "range_km",
-    "rcs",
     "wavelength_m",
-    "received_power",
+    "transmit_power_dbm",
+    "antenna_gain_db",
+    "noise_figure_db",
+    "external_noise_db",
+    "scenario_noise_penalty_db",
+    "range_km",
+    "rcs_m2",
+    "system_loss_db",
+    "received_power_w",
+    "noise_power_w",
     "snr_db"
 ]
 
 quantum_features = physics_features + [
     "q_feature_1",
     "q_feature_2",
-    "q_feature_3"
+    "q_feature_3",
+    "q_feature_4",
+    "q_feature_5",
+    "q_feature_6",
+    "quantum_ai_detection_index"
 ]
 
-def evaluate_model(name, y_true, y_pred):
+def evaluate(name, y_true, y_pred):
     return {
         "model": name,
         "mse": mean_squared_error(y_true, y_pred),
@@ -44,135 +51,85 @@ def evaluate_model(name, y_true, y_pred):
         "r2": r2_score(y_true, y_pred)
     }
 
-# -------------------------
-# Random Forest baseline
-# -------------------------
-X = df[physics_features].values
-y = df[target].values
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-
-rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-rf.fit(X_train, y_train)
-rf_pred = rf.predict(X_test)
-
-results = []
-results.append(evaluate_model("Random Forest", y_test, rf_pred))
-
-# -------------------------
-# PyTorch DNN helper
-# -------------------------
-class DNNRegressor(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-def train_dnn(feature_list, model_name, epochs=150):
-    X = df[feature_list].values
-    y = df[target].values.reshape(-1, 1)
+def train_model(name, model, features):
+    X = df[features].values
+    y = df[target].values
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+    pred = np.clip(pred, 0, 0.5)
 
-    X_train_t = torch.tensor(X_train, dtype=torch.float32)
-    y_train_t = torch.tensor(y_train, dtype=torch.float32)
-    X_test_t = torch.tensor(X_test, dtype=torch.float32)
+    return evaluate(name, y_test, pred), y_test, pred
 
-    model = DNNRegressor(input_dim=X_train.shape[1])
-    loss_fn = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+models = [
+    (
+        "Random Forest Physics",
+        RandomForestRegressor(n_estimators=150, random_state=42, n_jobs=-1),
+        physics_features
+    ),
+    (
+        "Gradient Boosting Physics",
+        GradientBoostingRegressor(random_state=42),
+        physics_features
+    ),
+    (
+        "MLP Physics",
+        Pipeline([
+            ("scaler", StandardScaler()),
+            ("mlp", MLPRegressor(hidden_layer_sizes=(128, 64, 32), max_iter=300, random_state=42))
+        ]),
+        physics_features
+    ),
+    (
+        "Quantum-AI MLP",
+        Pipeline([
+            ("scaler", StandardScaler()),
+            ("mlp", MLPRegressor(hidden_layer_sizes=(128, 64, 32), max_iter=300, random_state=42))
+        ]),
+        quantum_features
+    )
+]
 
-    loss_history = []
+results = []
+saved_y = None
+saved_pred = None
 
-    for epoch in range(epochs):
-        model.train()
-        optimizer.zero_grad()
-        pred = model(X_train_t)
-        loss = loss_fn(pred, y_train_t)
-        loss.backward()
-        optimizer.step()
-        loss_history.append(loss.item())
+for name, model, features in models:
+    metric, y_test, pred = train_model(name, model, features)
+    results.append(metric)
+    if name == "Quantum-AI MLP":
+        saved_y = y_test
+        saved_pred = pred
 
-    model.eval()
-    with torch.no_grad():
-        y_pred = model(X_test_t).numpy().flatten()
-
-    y_test_flat = y_test.flatten()
-
-    metric = evaluate_model(model_name, y_test_flat, y_pred)
-
-    return metric, y_test_flat, y_pred, loss_history
-
-standard_metric, y_test_standard, pred_standard, loss_standard = train_dnn(
-    physics_features,
-    "Standard DNN"
-)
-results.append(standard_metric)
-
-quantum_metric, y_test_quantum, pred_quantum, loss_quantum = train_dnn(
-    quantum_features,
-    "Quantum-Inspired DNN"
-)
-results.append(quantum_metric)
-
-# Save model comparison table
-results_df = pd.DataFrame(results)
+results_df = pd.DataFrame(results).sort_values("r2", ascending=False)
 results_df.to_csv("results/model_comparison.csv", index=False)
 
-print("\nModel comparison:")
-print(results_df)
-
-# -------------------------
-# Figure 4: Actual vs predicted
-# -------------------------
 plt.figure(figsize=(6, 6))
-plt.scatter(y_test_quantum, pred_quantum, s=8, alpha=0.35)
+plt.scatter(saved_y, saved_pred, s=8, alpha=0.35)
 plt.plot([0, 0.5], [0, 0.5], linestyle="--", linewidth=2)
 plt.xlabel("Physics-Computed Detection Error")
 plt.ylabel("AI-Predicted Detection Error")
-plt.title("Quantum-Inspired DNN Prediction Validation")
+plt.title("Quantum-AI Model Validation")
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig("figures/fig4_actual_vs_predicted_quantum_dnn.png", dpi=300)
-plt.savefig("figures/fig4_actual_vs_predicted_quantum_dnn.pdf")
+plt.savefig("figures/fig4_actual_vs_predicted_quantum_ai.png", dpi=300)
+plt.savefig("figures/fig4_actual_vs_predicted_quantum_ai.pdf")
 plt.close()
 
-# -------------------------
-# Figure 5: Training loss comparison
-# -------------------------
 plt.figure(figsize=(7, 5))
-plt.plot(loss_standard, label="Standard DNN")
-plt.plot(loss_quantum, label="Quantum-Inspired DNN")
-plt.xlabel("Epoch")
-plt.ylabel("MSE Loss")
-plt.title("Training Loss Convergence")
-plt.legend()
-plt.grid(True, alpha=0.3)
+plt.bar(results_df["model"], results_df["r2"])
+plt.xticks(rotation=30, ha="right")
+plt.ylabel("R² Score")
+plt.title("Model Comparison for Detection-Error Prediction")
+plt.grid(True, axis="y", alpha=0.3)
 plt.tight_layout()
-plt.savefig("figures/fig5_training_loss.png", dpi=300)
-plt.savefig("figures/fig5_training_loss.pdf")
+plt.savefig("figures/fig5_model_r2_comparison.png", dpi=300)
+plt.savefig("figures/fig5_model_r2_comparison.pdf")
 plt.close()
 
-print("\nSaved:")
-print("results/model_comparison.csv")
-print("figures/fig4_actual_vs_predicted_quantum_dnn.png")
-print("figures/fig5_training_loss.png")
+print("Model comparison saved: results/model_comparison.csv")
+print(results_df)
