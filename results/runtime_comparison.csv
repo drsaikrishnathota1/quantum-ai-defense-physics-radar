@@ -1,0 +1,4 @@
+operation,samples,time_seconds
+Quantum-AI MLP training,48000,2.9886696338653564
+Quantum-AI MLP inference,12000,0.009200334548950195
+Inference per sample,1,7.666945457458496e-07

@@ -1,0 +1,4 @@
+feature_set,model,mse,mae,r2,r2_gain_vs_physics_mlp
+Physics only,MLP Physics,0.0001069872594804,0.0060306778128225,0.9968427344415705,0.0
+Full physics + quantum-inspired features,Quantum-AI MLP Full-Physics,5.210728685593852e-05,0.0049084496706249,0.9984622791262028,0.0016195446846323236
+Operational inputs + quantum-inspired features,Operational Quantum-AI MLP,4.8705742338485504e-05,0.0043996089059724,0.998562660979169,0.0017199265375985595

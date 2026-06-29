@@ -1,0 +1,2 @@
+train_scenarios,test_scenario,mse,mae,r2
+low_noise + medium_noise,high_noise,0.00329048674927601,0.050160636230063504,0.8680471775163819

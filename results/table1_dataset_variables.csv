@@ -1,0 +1,14 @@
+Variable,Meaning,Role
+frequency_ghz,Radar carrier frequency,Input physics variable
+wavelength_m,Radar wavelength computed from c/f,Derived physics variable
+transmit_power_dbm,Transmitted radar power,Input system variable
+antenna_gain_db,Antenna gain,Input system variable
+range_km,Target range,Input physics variable
+rcs_m2,Radar cross-section proxy,Input target variable
+received_power_w,Received power from simplified radar equation,Derived physics output
+noise_power_w,Thermal and scenario-dependent noise power,Derived noise output
+snr_db,Signal-to-noise ratio,Derived detection variable
+q_feature_1 to q_feature_6,Quantum-inspired angle-encoding features,AI feature map
+quantum_ai_detection_index,Bounded aggregate quantum-inspired feature index,AI interpretability variable
+detection_error,Physics-computed detection error probability,Prediction target
+detection_probability,One minus detection-error probability,Derived output
